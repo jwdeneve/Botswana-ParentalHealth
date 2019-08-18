@@ -1,18 +1,14 @@
 ************************************************************************
 * Children's education and parental health: evidence from Botswana.
-* Date: 15 Aug 2019
+* Date: 18 Aug 2019
 ************************************************************************
 
 ************************************************************************
-* Preparing IPUMS
+* Preparing IPUMS datasets
 ************************************************************************
 
 use "D:\PAR HLTH\botswana\raw data\IPUMS census 2001 and 2011.dta", clear
 drop perwt hhwt
-
-* Year of birth
-
-gen yob = year - age if age <= 100
 
 ************************************************************************
 * CLEANING AND STUDY CRITERIA
@@ -33,6 +29,18 @@ drop if bplbw == 98 | bplbw == 99 /*not born in Botswana or unknown*/
 ************************************************************************
 * ADDITIONAL VARIABLES
 ************************************************************************
+
+* Year of birth
+
+gen yob = year - age if age <= 100
+
+* Age group
+
+egen fiveyragegrp = cut(age), at(10(5)101)
+gen agegrp20 = fiveyragegrp == 20 & fiveyragegrp <.
+gen agegrp25 = fiveyragegrp == 25 & fiveyragegrp <.
+gen agegrp30 = fiveyragegrp == 30 & fiveyragegrp <.
+gen agegrp35 = fiveyragegrp == 35 & fiveyragegrp <.
 
 * Female
 
@@ -246,9 +254,27 @@ replace cellphone = 0 if cell == 2
 gen telephone = 1 if phone == 2
 replace telephone = 0 if phone == 1
 
+gen radiohh = 1 if radio == 2
+replace radiohh = 0 if radio == 1
+drop radio
+rename radiohh radio
+
 gen number = famsize if famsize < 99
 
 gen nchildren = chborn if chborn <= 12
+
+gen year_2001 = year == 2001
+gen year_2011 = year == 2011
+
+gen momedu7 = momedu >= 7 & momedu < .
+gen momedu10 = momedu >= 10 & momedu < .
+
+gen momagegrp30 = momagegrp == 30 & momagegrp <.
+gen momagegrp40 = momagegrp == 40 & momagegrp <.
+gen momagegrp50 = momagegrp == 50 & momagegrp <.
+gen momagegrp60 = momagegrp == 60 & momagegrp <.
+
+gen birthdistrictGabs = birthdistr == 1 & birthdistr < .
 
 save bots_fullsample.dta, replace
 
@@ -358,7 +384,7 @@ twoway (connected meanmotheralive yob, msize(medsmall) lpattern(dash)) ///
 yscale(range(0 1)) legend(order(1 "Mother alive" 2 "Father alive" 3 "Parental disability" 4 "Coresidence")) /// 
 ylabel(0(.2)1) xtitle("Year of birth") ytitle("{bf}Proportion (%)") xline(1981, lc(cranberry))
 
-* age heaping and birth cohort size
+* Age heaping and birth cohort size
 
 use bots_fullsample.dta, replace
 keep if disany != .
@@ -374,7 +400,7 @@ twoway hist age if heap == 0, discrete frequency width(1) start(15) color(blue) 
 || hist age if heap == 1, discrete frequency width(1) start(15) color(red) lcolor(black) xtitle("{bf}Age") ///
 legend(order(2 `"Heap Years"')) 
 
-* Diff-in-diff
+* Difference-in-differences exploiting differential impact of the reform by birth district 
 
 use bots.dta, clear
 keep if yob == 1975 /*pre-reform*/
@@ -448,7 +474,7 @@ est sto m14
 reg educyrs instr2 i.agegrp yob i.year i.birthdistr if fem == 0, r
 est sto m15
 
-outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15] using bots.xls, keep(instr2) dec(3) replace
+outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15] using bots.xls, keep(instr2) stats(coef ci) dec(3) replace
 
 * OLS and ITT
 
@@ -487,10 +513,10 @@ est sto m9
 outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9] using bots.xls, keep(educyrs atleast10 instr2) stats(coef, ci) dec(3) replace
 
 ****************************************************************************
-* OTHER ROBUSTNESS CHECKS FOR FIRST STAGE
+* ROBUSTNESS CHECKS FOR FIRST STAGE
 ****************************************************************************
 
-* smaller smaple around cutoff
+* Smaller smaple around cutoff
 
 use bots.dta, clear
 keep if yob >= 1976 & yob <= 1986
@@ -507,7 +533,7 @@ est sto m3
 
 outreg2 [m1 m2 m3] using bots.xls, keep(instr2) dec(3) replace
 
-* using sample with 9+ educyrs
+* Using sample with 9+ educyrs
 
 use bots.dta, clear
 keep if educyrs >= 9
@@ -523,7 +549,7 @@ est sto m3
 
 outreg2 [m1 m2 m3] using bots.xls, keep(instr2) dec(3) replace
 
-* using larger sample
+* Using larger sample around cutoff
 
 use bots_fullsample.dta, clear
 keep if disany != .
@@ -539,7 +565,7 @@ est sto m3
 
 outreg2 [m1 m2 m3] using bots.xls, keep(instr2) dec(3) replace
 
-* educ gap
+* Large intergenerational education gap
 
 use bots.dta, clear
 
@@ -575,7 +601,7 @@ est sto m3
 
 outreg2 [m1 m2 m3] using bots.xls, keep(instr2) dec(3) replace
 
-* heap year
+* Controlling for heap year in age (multiple of five)
 
 use bots.dta, clear
 
@@ -603,7 +629,7 @@ outreg2 [m1 m2 m3] using bots.xls, keep(instr2) dec(3) replace
 * ROBUSTNESS FOR ITT
 ****************************************************************************
 
-* using age
+* Using just age
 
 use bots.dta, clear
 
@@ -624,7 +650,7 @@ est sto m5
 
 outreg2 [m1 m2 m3 m4 m5] using bots.xls, keep(instr2) dec(3) replace
 
-* smaller smaple around cutoff
+* Smaller smaple around cutoff
 
 use bots.dta, clear
 keep if yob >= 1976 & yob <= 1986
@@ -635,7 +661,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(3) replace
 
-* using larger sample
+* Using larger sample around cutoff
 
 use bots_fullsample.dta, clear
 drop if disany == .
@@ -645,7 +671,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(3) replace
 
-* using sample with 9+ educyrs
+* Using sample with 9+ years of schooling
 
 use bots.dta, clear
 keep if educyrs >= 9
@@ -655,7 +681,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(3) replace
 
-* gap between parental and children's education
+* Large intergenerational education gap
 
 use bots.dta, clear
 
@@ -685,7 +711,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(3) replace
 
-* parental age group
+* By parental age group
 
 use bots.dta, clear
 
@@ -719,9 +745,9 @@ est sto m8
 reg disany instr2 c.age##i.sex c.age2##i.sex c.age3##i.sex c.age4##i.sex i.year##i.sex i.birthdistr##i.sex if momagegrp == 70 | popagegrp == 70, r
 est sto m9
 
-outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9] using bots.xls, keep(instr2 educyrs atleast10) dec(3) replace
+outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9] using bots.xls, keep(instr2 educyrs atleast10) stats(coef ci) dec(3) replace
 
-* heap year
+* Controlling for heap year in age (multiple of five)
 
 use bots.dta, clear
 
@@ -734,7 +760,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(3) replace
  
-* excluding 1980 cohort
+* Excluding 1980 cohort
 
 use bots.dta, clear
 
@@ -745,7 +771,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(3) replace
 
-* including social parents (eg, stepparents, adoption parents)
+* Including social parents (eg, stepparents, adoption parents)
 
 use bots_fullsample.dta, clear
 drop if age < 16
@@ -757,7 +783,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(3) replace
 
-* using difference-in-differences, exploiting differential impact of the reform by birth district 
+* Difference-in-differences exploiting differential impact of the reform by birth district 
 
 use bots.dta, clear
 keep if yob == 1975 /*pre-reform*/
@@ -774,7 +800,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(i.instr2#i.birthdistr_highedu9) dec(3) replace
 
-* logit
+* Using logit
 
 use bots.dta, clear
 
@@ -920,7 +946,7 @@ gen edudiff_m = educyrs - momedu if momedu < .
 gen edudiff_p = educyrs - popedu if popedu < .
 
 ****************************************************************************
-* SECONDARY HEALTH OUTCOMES
+* SECONDARY PARENTAL HEALTH OUTCOMES
 ****************************************************************************
 
 use bots.dta, clear
@@ -949,10 +975,10 @@ reg dislopop instr2 c.age##i.sex c.age2##i.sex c.age3##i.sex c.age4##i.sex i.yea
 est sto m6
 margins if yob < 1981
 
-outreg2 [m1 m2 m3 m4 m5 m6] using bots.xls, keep(educyrs instr2) dec(3) replace
+outreg2 [m1 m2 m3 m4 m5 m6] using bots.xls, keep(educyrs instr2) stats(coef ci) dec(3) replace
 
 ****************************************************************************
-* LABOR MARKET OUTCOMES
+* CHILDREN'S LABOR MARKET OUTCOMES
 ****************************************************************************
 
 use bots.dta, clear
@@ -984,14 +1010,17 @@ margins if yob < 1981
 ivregress 2sls lfp age age2 age3 age4 i.year i.birthdistr (educyrs = instr2) if fem == 1, r
 est sto m7
 estat firststage
+estat endogenous
 
 ivregress 2sls lfp age age2 age3 age4 i.year i.birthdistr (educyrs = instr2) if fem == 0, r
 est sto m8
 estat firststage
+estat endogenous
 
 ivregress 2sls lfp c.age##i.sex c.age2##i.sex c.age3##i.sex c.age4##i.sex i.year##i.sex i.birthdistr##i.sex (educyrs = instr2), r
 est sto m9
 estat firststage
+estat endogenous
 
 outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9] using bots.xls, keep(educyrs lfp instr2) stats(coef, ci) dec(3) replace
 
@@ -1049,7 +1078,7 @@ est sto m14
 reg educyrs instr2 i.agegrp yob i.year i.birthdistr if fem == 0, r
 est sto m15
 
-outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15] using bots.xls, keep(instr2) dec(3) replace
+outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15] using bots.xls, keep(instr2) stats(coef ci) dec(3) replace
 
 ****************************************************************************
 * OLS RESULTS CONTROLLING FOR MATERNAL AGE AND EDUC
@@ -1078,8 +1107,112 @@ est sto m5
 reg disany atleast10 c.age##i.sex c.age2##i.sex c.age3##i.sex c.age4##i.sex c.momage##i.sex c.momedu##i.sex i.year##i.sex i.birthdistr##i.sex, r
 est sto m6
 
-outreg2 [m1 m2 m3 m4 m5 m6] using bots.xls, keep(educyrs atleast10) dec(3) replace
+outreg2 [m1 m2 m3 m4 m5 m6] using bots.xls, keep(educyrs atleast10) stats(coef ci) dec(3) replace
 
+****************************************************************************
+* COVARIATE BALANCE PLOTS
+****************************************************************************
+
+use bots.dta, clear
+
+* female
+
+reg fem educyrs age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_fem
+ivreg2 fem (educyrs=instr2) age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r 
+est sto iv_fem
+
+* birth district = Gaborone
+
+reg birthdistrictGabs educyrs age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_birthdistrictGabs
+ivreg2 birthdistrictGabs (educyrs=instr2) age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r 
+est sto iv_birthdistrictGabs
+
+* religion
+
+reg norelig educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_relig
+ivreg2 norelig (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_relig
+
+* christian
+
+reg christian educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_christ
+ivreg2 christian (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_christ
+
+* telephone
+
+reg telephone educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_phone
+ivreg2 telephone (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_phone
+
+* water
+
+reg water educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_water
+ivreg2 water (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_water
+
+* remittances
+
+reg rem educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_rem
+ivreg2 rem (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_rem
+
+* maternal secondary educ
+
+reg momedu10 educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_momedu10
+ivreg2 momedu10 (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_momedu10
+
+* maternal age 30-39
+
+reg momagegrp30 educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_momagegrp30
+ivreg2 momagegrp30 (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_momagegrp30
+
+* maternal age 40-49
+
+reg momagegrp40 educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_momagegrp40
+ivreg2 momagegrp40 (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_momagegrp40
+
+* maternal age 50-59
+
+reg momagegrp50 educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_momagegrp50
+ivreg2 momagegrp50 (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_momagegrp50
+
+* maternal age 60-69
+
+reg momagegrp60 educyrs fem age age2 age3 age4 i.birthdistr i.year, r
+est sto reg_momagegrp60
+ivreg2 momagegrp60 (educyrs=instr2) fem age age2 age3 age4 i.birthdistr i.year, endog(educyrs) r
+est sto iv_momagegrp60
+
+coefplot (reg_fem,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Female")) (iv_fem,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05) rename(educyrs= "Female")) ///
+		 (reg_birthdistrictGabs,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Birth District Gaborone")) (iv_birthdistrictGabs,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05) rename(educyrs= "Birth District Gaborone")) ///
+		 (reg_relig,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="No Religion")) (iv_relig,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "No Religion")) /// 
+ 		 (reg_christ,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Christian")) (iv_christ,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Christian")) /// 
+		 (reg_phone,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Telephone")) (iv_phone,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Telephone")) ///
+		 (reg_water,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Water")) (iv_water,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Water")) /// 
+		 (reg_rem,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Remittances")) (iv_rem,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Remittances")) /// 
+		 (reg_momedu10,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Maternal Secondary Education")) (iv_momedu10,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Maternal Secondary Education")) /// 
+ 		 (reg_momagegrp30,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Maternal Age 30-39")) (iv_momagegrp40,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Maternal Age 30-39")) /// 
+		 (reg_momagegrp40,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Maternal Age 40-49")) (iv_momagegrp40,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Maternal Age 40-49")) /// 
+		 (reg_momagegrp50,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Maternal Age 50-59")) (iv_momagegrp50,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Maternal Age 50-59")) ///
+		 (reg_momagegrp60,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) rename(educyrs="Maternal Age 60-69")) (iv_momagegrp60,keep(educyrs) ms(T) mc(gs10) ciopts(lc(gs10)) offset(-0.05)  rename(educyrs = "Maternal Age 60-69")) /// 
+		  , legend(off) xline(0) byopts(yrescale)  xtitle("Scaled bias components") graphregion(color(white))
+  
 ****************************************************************************
 * POWER CALCULATION
 ****************************************************************************
@@ -1088,10 +1221,4 @@ use bots.dta, clear
 
 su disany
 power twomeans 0.06 0.07, sd(0.21)
-
-
-
-
-
-
 
