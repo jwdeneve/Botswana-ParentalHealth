@@ -1,6 +1,6 @@
 ************************************************************************
 * Children's education and parental health: evidence from Botswana.
-* Date: 5 March 2020
+* Date: 28 Jul 2020
 ************************************************************************
 
 ************************************************************************
@@ -439,7 +439,7 @@ twoway hist age if heap == 0, discrete frequency width(1) start(15) color(blue) 
 legend(order(2 `"Heap Years"')) 
 
 ****************************************************************************
-* ANALYSES 
+* REGRESSION ANALYSES: FS, OLS, ITT, AND 2SLS RESULTS
 ****************************************************************************
 
 * First stage
@@ -587,7 +587,8 @@ estat endogenous
 
 outreg2 [m1 m2 m3 m4 m5 m6] using bots.xls, keep(educyrs instr2) stats(coef, ci) dec(1) replace
 
-* Robustness ITT: mother alive
+* Robustness checks for ITT results: mother alive
+
 * Using alternative f(age)
 
 use bots.dta, clear
@@ -612,9 +613,14 @@ outreg2 [m1 m2 m3 m4] using bots.xls, keep(instr2) dec(1) replace
 
 use bots.dta, clear
 keep if yob >= 1976 & yob <= 1986
-
 replace malive = malive*100
 
+reg malive instr2 c.age##i.sex c.age2##i.sex c.yob##i.sex i.year##i.sex i.birthdistr##i.sex, r
+est sto m1
+
+outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
+
+keep if yob >= 1978 & yob <= 1984
 reg malive instr2 c.age##i.sex c.age2##i.sex c.yob##i.sex i.year##i.sex i.birthdistr##i.sex, r
 est sto m1
 
@@ -633,7 +639,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
 
-* heap year in age
+* Heap year in age
 
 use bots.dta, clear
 
@@ -659,7 +665,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
 
-* intergenerational education gap
+* Intergenerational education gap
 
 use bots.dta, clear
 
@@ -691,18 +697,30 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
 
-* parental age
+* Parental age (maternal survival if father alive and age >= 50)
 
 use bots.dta, clear
 
 replace malive = malive*100
 
-reg malive instr2 i.age##i.sex c.yob##i.sex i.year##i.sex i.birthdistr##i.sex if momage >= 50 & momage < ., r
+reg malive instr2 i.age##i.sex c.yob##i.sex i.year##i.sex i.birthdistr##i.sex if popage >= 50 & popage < ., r
 est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
 
-* logit
+* Slope change in YOB
+
+use bots.dta, clear
+
+replace malive = malive*100
+
+gen YOBcentered = yob - 1981
+reg malive instr2 c.YOBcentered##i.sex c.YOBcentered#1.instr2 c.YOBcentered#1.instr2#i.sex i.age##i.sex i.year##i.sex i.birthdistr##i.sex
+est sto m1
+
+outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
+
+* Using Logit
 
 use bots.dta, clear
 
@@ -746,8 +764,8 @@ est sto m9
 
 outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9] using bots.xls, keep(educyrs atleast10 instr2) stats(coef, ci) dec(3) append ctitle(Odds ratio) eform replace
 
+* Robustness checks for ITT results: father alive
 
-* Robustness ITT: father alive
 * Using alternative f(age)
 
 use bots.dta, clear
@@ -775,9 +793,14 @@ outreg2 [m1 m2 m3 m4] using bots.xls, keep(instr2) dec(1) replace
 
 use bots.dta, clear
 keep if yob >= 1976 & yob <= 1986
-
 replace falive = falive*100
 
+reg falive instr2 c.age##i.sex c.age2##i.sex c.yob##i.sex i.year##i.sex i.birthdistr##i.sex, r
+est sto m1
+
+outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
+
+keep if yob >= 1978 & yob <= 1984
 reg falive instr2 c.age##i.sex c.age2##i.sex c.yob##i.sex i.year##i.sex i.birthdistr##i.sex, r
 est sto m1
 
@@ -796,7 +819,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
 
-* heap year in age
+* Heap year in age
 
 use bots.dta, clear
 
@@ -822,7 +845,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
 
-* intergenerational education gap
+* Intergenerational education gap
 
 use bots.dta, clear
 
@@ -854,7 +877,7 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
 
-* parental age
+* Parental age
 
 use bots.dta, clear
 
@@ -865,7 +888,19 @@ est sto m1
 
 outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
 
-* logit
+* Slope change in YOB
+
+use bots.dta, clear
+
+replace falive = falive*100
+
+gen YOBcentered = yob - 1981
+reg falive instr2 c.YOBcentered##i.sex c.YOBcentered#1.instr2 c.YOBcentered#1.instr2#i.sex i.age##i.sex i.year##i.sex i.birthdistr##i.sex
+est sto m1
+
+outreg2 [m1] using bots.xls, keep(instr2) dec(1) replace
+
+* Using Logit
 
 use bots.dta, clear
 
@@ -908,7 +943,6 @@ logit falive instr2 i.age##i.sex c.yob##i.sex c.yob2##i.sex i.year##i.sex i.birt
 est sto m9
 
 outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9] using bots.xls, keep(educyrs atleast10 instr2) stats(coef, ci) dec(3) append ctitle(Odds ratio) eform replace
-
 
 ****************************************************************************
 * CO-RESIDENCE FULL SAMPLE
@@ -1101,10 +1135,12 @@ estat endogenous
 outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12] using bots.xls, keep(educyrs atleast10 instr2) stats(coef, ci) dec(1) replace
 
 ****************************************************************************
-* SUMMARY STATS
+* SUMMARY STATISTICS
 ****************************************************************************
 
 use bots.dta, clear
+
+keep if withany==1
 
 su malive if year == 2001 & yob < 1981 
 su malive if year == 2011 & yob < 1981
@@ -1115,6 +1151,11 @@ su falive if year == 2001 & yob < 1981
 su falive if year == 2011 & yob < 1981
 su falive if year == 2001 & yob >= 1981
 su falive if year == 2011 & yob >= 1981
+
+su disany if year == 2001 & yob < 1981 
+su disany if year == 2011 & yob < 1981
+su disany if year == 2001 & yob >= 1981
+su disany if year == 2011 & yob >= 1981
 
 su age if year == 2001 & yob < 1981 
 su age if year == 2011 & yob < 1981
@@ -1192,7 +1233,7 @@ su hhmort if year == 2001 & yob >= 1981
 su hhmort if year == 2011 & yob >= 1981
 
 ****************************************************************************
-* OLS RESULTS CONTROLLING FOR MATERNAL AGE AND EDUC
+* OLS AND ITT RESULTS CONTROLLING FOR MATERNAL AGE AND EDUCATION
 ****************************************************************************
 
 use bots.dta, clear
@@ -1220,7 +1261,16 @@ est sto m5
 reg disany atleast10 i.age##i.sex c.momage##i.sex c.momedu##i.sex c.yob##i.sex i.year##i.sex i.birthdistr##i.sex, r
 est sto m6
 
-outreg2 [m1 m2 m3 m4 m5 m6] using bots.xls, keep(educyrs atleast10) stats(coef ci) dec(1) replace
+reg disany instr2 i.age momage momedu yob i.birthdistr i.year if fem == 1, r
+est sto m7
+
+reg disany instr2 i.age momage momedu yob i.birthdistr i.year if fem == 0, r
+est sto m8
+
+reg disany instr2 i.age##i.sex c.momage##i.sex c.momedu##i.sex c.yob##i.sex i.year##i.sex i.birthdistr##i.sex, r
+est sto m9
+
+outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9] using bots.xls, keep(educyrs atleast10 instr2) stats(coef ci) dec(1) replace
 
 ****************************************************************************
 * COVARIATE BALANCE PLOTS
@@ -1336,7 +1386,7 @@ coefplot (reg_fem,keep(educyrs) ms(S) mc(gs5) ciopts(lc(gs5)) offset(0.05) renam
 		  , legend(off) xline(0) byopts(yrescale)  xtitle("Scaled bias components") graphregion(color(white))
 		  
 ****************************************************************************
-* PARENTAL AGE
+* RESULTS BY PARENTAL AGE
 ****************************************************************************
 
 use bots.dta, clear
@@ -1375,5 +1425,3 @@ est sto m9
 
 outreg2 [m1 m2 m3 m4 m5 m6 m7 m8 m9] using bots.xls, keep(instr2 educyrs atleast10) stats(coef ci) dec(1) replace
 		  
-
-
